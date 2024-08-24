@@ -1,0 +1,112 @@
+-- ScareEffectScript
+
+-- Variables
+local rocketModelId = 169602103 -- Seanork's Rocket Jumper
+local downSoundId = "rbxassetid://17771526755"
+local shotgunSoundId = "rbxassetid://4804954860"
+local targetDotColor = Color3.fromRGB(255, 0, 0) -- Red dot color
+
+-- Services
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local UIS = game:GetService("UserInputService")
+
+-- Error Handling Function
+local function handleError(message)
+    warn(message)
+end
+
+-- Function to create the scare effect
+local function scarePlayer(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        handleError("Target player or character not found!")
+        return
+    end
+
+    -- Create and fire rocket
+    local rocket = Instance.new("Part")
+    rocket.Size = Vector3.new(1, 1, 1)
+    rocket.CanCollide = false
+    rocket.Anchored = true
+    rocket.Position = targetPlayer.Character.HumanoidRootPart.Position
+    rocket.Parent = Workspace
+
+    -- Play down sound
+    local downSound = Instance.new("Sound")
+    downSound.SoundId = downSoundId
+    downSound.Parent = rocket
+    downSound:Play()
+
+    -- Destroy rocket immediately
+    wait(0.1)
+    rocket:Destroy()
+
+    -- Create target dot
+    local targetDot = Instance.new("BillboardGui")
+    targetDot.Adornee = targetPlayer.Character.HumanoidRootPart
+    targetDot.Size = UDim2.new(0, 50, 0, 50)
+    targetDot.StudsOffset = Vector3.new(0, 2, 0)
+    targetDot.Parent = targetPlayer.Character.HumanoidRootPart
+
+    local targetDotImage = Instance.new("ImageLabel")
+    targetDotImage.Size = UDim2.new(1, 0, 1, 0)
+    targetDotImage.BackgroundColor3 = targetDotColor
+    targetDotImage.BackgroundTransparency = 0.5
+    targetDotImage.Parent = targetDot
+
+    -- Function to rain rockets and play sounds
+    local function rainRockets()
+        while targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") do
+            if targetPlayer.Character.HumanoidRootPart.Velocity.Magnitude > 0 then
+                for i = 1, 5 do
+                    local rocketRain = Instance.new("Part")
+                    rocketRain.Size = Vector3.new(1, 1, 1)
+                    rocketRain.CanCollide = false
+                    rocketRain.Anchored = true
+                    rocketRain.Position = Vector3.new(
+                        targetPlayer.Character.HumanoidRootPart.Position.X + math.random(-10, 10),
+                        100,
+                        targetPlayer.Character.HumanoidRootPart.Position.Z + math.random(-10, 10)
+                    )
+                    rocketRain.Parent = Workspace
+                    
+                    local rocketRainSound = Instance.new("Sound")
+                    rocketRainSound.SoundId = shotgunSoundId
+                    rocketRainSound.Parent = rocketRain
+                    rocketRainSound:Play()
+                    
+                    wait(0.1)
+                    rocketRain:Destroy()
+                end
+            end
+            wait(1)
+        end
+    end
+
+    -- Connect to movement detection
+    local connection
+    connection = targetPlayer.Character.HumanoidRootPart:GetPropertyChangedSignal("Velocity"):Connect(function()
+        if targetPlayer.Character.HumanoidRootPart.Velocity.Magnitude > 0 then
+            rainRockets()
+        end
+    end)
+
+    -- Cleanup
+    targetPlayer.Character.Humanoid.Died:Connect(function()
+        targetDot:Destroy()
+        if connection then
+            connection:Disconnect()
+        end
+    end)
+end
+
+-- Trigger scare effect on mouse click
+UIS.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                scarePlayer(player)
+            end
+        end
+    end
+end)
